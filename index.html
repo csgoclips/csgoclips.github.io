@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CS2 Highlight & Short Generator</title>
+    <title>CS2 Highlight & Short Generator (No Bot)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -61,9 +61,18 @@
             font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
         }
-        input:focus, select:focus {
-            outline: none;
+        .dropzone {
+            border: 2px dashed #444;
+            padding: 25px;
+            text-align: center;
+            background-color: #161616;
+            cursor: pointer;
+            margin-bottom: 15px;
+            color: #888;
+        }
+        .dropzone:hover {
             border-color: #de9b35;
+            color: #fff;
         }
         .row {
             display: flex;
@@ -88,7 +97,6 @@
         }
         button:hover {
             background-color: #f0ad4e;
-            border-color: #f0ad4e;
         }
         button:disabled {
             background-color: #333;
@@ -153,11 +161,13 @@
 <body>
 
 <div class="container">
-    <h1>CS2 Highlight Generator</h1>
+    <h1>CS2 Highlight Generator (No Bot)</h1>
     
-    <div class="section-title">1. Match Input</div>
-    <label for="shareCode">Match Sharing Code</label>
-    <input type="text" id="shareCode" placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx" maxlength="34">
+    <div class="section-title">1. Upload Match Replay (.dem)</div>
+    <div class="dropzone" onclick="document.getElementById('demFile').click()">
+        <span id="fileNameDisplay">📂 CLICK OR DROP CS2 .DEM FILE HERE</span>
+        <input type="file" id="demFile" accept=".dem" style="display: none;" onchange="updateFileName(this)">
+    </div>
 
     <div class="row">
         <div class="col">
@@ -173,7 +183,7 @@
         </div>
     </div>
 
-    <div class="section-title">2. Camera & Effects (cs2.video style)</div>
+    <div class="section-title">2. Camera & Effects</div>
     <div class="row">
         <div class="col">
             <label for="fov">Camera FOV</label>
@@ -185,10 +195,10 @@
         </div>
     </div>
 
-    <label for="overlayText">Text Overlay (e.g., "INSANE 1V3 CLUTCH")</label>
-    <input type="text" id="overlayText" placeholder="YOUR TEXT HERE">
+    <label for="overlayText">Text Overlay</label>
+    <input type="text" id="overlayText" placeholder="INSANE CLUTCH">
 
-    <button id="generateBtn" onclick="runHighlightPipeline()">AUTO-EXTRACT HIGHLIGHTS</button>
+    <button id="generateBtn" onclick="uploadAndParseDemo()">EXTRACT HIGHLIGHTS</button>
 
     <div id="statusBox" class="status-box"></div>
 
@@ -196,21 +206,21 @@
         <div id="statsBar" class="stats-bar"></div>
         <canvas id="previewCanvas"></canvas>
         <div class="download-btns">
-            <button id="dlConfigBtn">1. Download CS2 Auto-Camera Config (.cfg)</button>
-            <button id="dlDemoBtn">2. Download Raw Match Replay (.dem.bz2)</button>
-            <button id="dlTitleCardBtn">3. Download Intro/Overlay Graphic (.png)</button>
+            <button id="dlConfigBtn">Download CS2 Auto-Camera Config (.cfg)</button>
+            <button id="dlTitleCardBtn">Download Overlay Graphic (.png)</button>
         </div>
     </div>
 </div>
 
 <script>
-    // REPLACE THIS URL with your Render / Railway backend URL once deployed!
-    const BACKEND_URL = 'http://localhost:3000/api/analyze';
+    function updateFileName(input) {
+        if (input.files.length > 0) {
+            document.getElementById('fileNameDisplay').textContent = `✔ Selected: ${input.files[0].name}`;
+        }
+    }
 
-    const shareCodeRegex = /^CSGO-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}$/;
-
-    async function runHighlightPipeline() {
-        const shareCode = document.getElementById('shareCode').value.trim();
+    async function uploadAndParseDemo() {
+        const fileInput = document.getElementById('demFile');
         const steamId = document.getElementById('steamId').value.trim();
         const videoFormat = document.getElementById('videoFormat').value;
         const fov = document.getElementById('fov').value;
@@ -224,44 +234,44 @@
         outputBox.style.display = 'none';
         statusBox.className = 'status-box';
 
-        if (!shareCodeRegex.test(shareCode)) {
+        if (fileInput.files.length === 0) {
             statusBox.style.display = 'block';
             statusBox.classList.add('error');
-            statusBox.innerHTML = '<strong>ERROR:</strong> Invalid share code format.<br>Expected: <code>CSGO-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</code>';
+            statusBox.innerHTML = '<strong>ERROR:</strong> Please select a .dem file first.';
             return;
         }
 
+        const formData = new FormData();
+        formData.append('dem', fileInput.files[0]);
+        formData.append('steamId', steamId);
+        formData.append('fov', fov);
+        formData.append('viewmodelFov', viewmodelFov);
+        formData.append('overlayText', overlayText);
+
         btn.disabled = true;
         statusBox.style.display = 'block';
-        statusBox.innerHTML = `> Connecting to Valve Game Coordinator & parsing demo ticks... (Takes ~10-20s)`;
+        statusBox.innerHTML = `> Parsing demo ticks locally... (Fast processing)`;
 
         try {
-            const response = await fetch(BACKEND_URL, {
+            // Your backend endpoint that accepts file uploads and runs demoparser2
+            const response = await fetch('http://localhost:3000/api/parse-demo', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ shareCode, steamId, fov, viewmodelFov, overlayText, videoFormat })
+                body: formData
             });
 
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to parse demo.');
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to extract highlight.');
-            }
-
-            // Populate real stats
             document.getElementById('statsBar').innerHTML = `
-                <strong>BEST PERFORMANCE FOUND:</strong><br>
+                <strong>HIGHLIGHT FOUND:</strong><br>
                 > PLAYER: ${data.highlight.player}<br>
                 > ROUND: ${data.highlight.round} (${data.highlight.killsCount} KILLS)<br>
-                > TICKS: ${data.highlight.startTick} -> ${data.highlight.endTick} | FOV: ${fov}
+                > TICKS: ${data.highlight.startTick} -> ${data.highlight.endTick}
             `;
 
-            // Render Graphic Preview with Text Overlay in chosen Aspect Ratio
             renderOverlayCanvas(videoFormat, overlayText || `${data.highlight.player} - ${data.highlight.killsCount}K`, data.highlight.round);
 
-            // Wire up downloads
             document.getElementById('dlConfigBtn').onclick = () => downloadTextFile('cs2_highlight.cfg', data.cfgContent);
-            document.getElementById('dlDemoBtn').onclick = () => window.open(data.demoUrl, '_blank');
             document.getElementById('dlTitleCardBtn').onclick = () => downloadCanvas();
 
             statusBox.style.display = 'none';
@@ -278,56 +288,36 @@
     function renderOverlayCanvas(format, text, round) {
         const canvas = document.getElementById('previewCanvas');
         const ctx = canvas.getContext('2d');
+        canvas.width = format === '916' ? 270 : 480;
+        canvas.height = format === '916' ? 480 : 270;
 
-        if (format === '916') {
-            canvas.width = 270;
-            canvas.height = 480;
-        } else {
-            canvas.width = 480;
-            canvas.height = 270;
-        }
-
-        // Dark tactical background
         ctx.fillStyle = '#111';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Border frame
         ctx.strokeStyle = '#de9b35';
         ctx.lineWidth = 4;
         ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-        // Top tag
         ctx.fillStyle = '#de9b35';
         ctx.font = 'bold 14px Courier New';
         ctx.textAlign = 'center';
         ctx.fillText(`CS2 // ROUND ${round}`, canvas.width / 2, 45);
 
-        // Main Custom Text Overlay
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 22px Courier New';
         ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
-
-        // Bottom watermark
-        ctx.fillStyle = '#666666';
-        ctx.font = '12px Courier New';
-        ctx.fillText(format === '916' ? '9:16 SHORTS CROP' : '16:9 STANDARD', canvas.width / 2, canvas.height - 25);
     }
 
     function downloadTextFile(filename, text) {
         const el = document.createElement('a');
         el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
         el.setAttribute('download', filename);
-        el.style.display = 'none';
-        document.body.appendChild(el);
         el.click();
-        document.body.removeChild(el);
     }
 
     function downloadCanvas() {
-        const canvas = document.getElementById('previewCanvas');
         const link = document.createElement('a');
-        link.download = 'cs2-highlight-overlay.png';
-        link.href = canvas.toDataURL();
+        link.download = 'cs2-overlay.png';
+        link.href = document.getElementById('previewCanvas').toDataURL();
         link.click();
     }
 </script>

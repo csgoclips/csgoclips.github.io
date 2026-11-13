@@ -1,1 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Highlight & Short Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            border-radius: 0 !important;
+        }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0a0a0a;
+            color: #d4d4d4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: #121212;
+            border: 2px solid #333;
+            padding: 30px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 8px 8px 0px #000;
+        }
+        h1 {
+            color: #de9b35;
+            margin-top: 0;
+            font-size: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .section-title {
+            font-size: 12px;
+            color: #777;
+            text-transform: uppercase;
+            margin: 15px 0 5px 0;
+            letter-spacing: 1px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #de9b35;
+        }
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+        .col {
+            flex: 1;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #de9b35;
+            color: #000;
+            border: 2px solid #de9b35;
+            font-size: 15px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #f0ad4e;
+            border-color: #f0ad4e;
+        }
+        button:disabled {
+            background-color: #333;
+            border-color: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .status-box {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #161616;
+            border: 1px dashed #555;
+            font-size: 13px;
+        }
+        .error {
+            border-color: #ff5555;
+            color: #ff8080;
+        }
+        .output-box {
+            display: none;
+            margin-top: 20px;
+            border: 1px solid #de9b35;
+            padding: 20px;
+            background-color: #18150f;
+            text-align: center;
+        }
+        .stats-bar {
+            background: #0d0d0d;
+            border: 1px solid #333;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #4ade80;
+            text-align: left;
+        }
+        canvas {
+            border: 1px solid #444;
+            background: #000;
+            max-width: 100%;
+            margin-bottom: 15px;
+        }
+        .download-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .download-btns button {
+            margin-top: 0;
+            background-color: #222;
+            color: #de9b35;
+            border: 1px solid #de9b35;
+            font-size: 13px;
+            padding: 10px;
+        }
+        .download-btns button:hover {
+            background-color: #de9b35;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <h1>CS2 Highlight Generator</h1>
+    
+    <div class="section-title">1. Match Input</div>
+    <label for="shareCode">Match Sharing Code</label>
+    <input type="text" id="shareCode" placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx" maxlength="34">
+
+    <div class="row">
+        <div class="col">
+            <label for="steamId">Player SteamID64 (Opt.)</label>
+            <input type="text" id="steamId" placeholder="Leave blank for best MVP">
+        </div>
+        <div class="col">
+            <label for="videoFormat">Format</label>
+            <select id="videoFormat">
+                <option value="169">Standard (16:9 YouTube)</option>
+                <option value="916">Vertical Short (9:16 Shorts)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="section-title">2. Camera & Effects (cs2.video style)</div>
+    <div class="row">
+        <div class="col">
+            <label for="fov">Camera FOV</label>
+            <input type="number" id="fov" value="90" min="60" max="120">
+        </div>
+        <div class="col">
+            <label for="viewmodelFov">Viewmodel FOV</label>
+            <input type="number" id="viewmodelFov" value="68" min="54" max="68">
+        </div>
+    </div>
+
+    <label for="overlayText">Text Overlay (e.g., "INSANE 1V3 CLUTCH")</label>
+    <input type="text" id="overlayText" placeholder="YOUR TEXT HERE">
+
+    <button id="generateBtn" onclick="runHighlightPipeline()">AUTO-EXTRACT HIGHLIGHTS</button>
+
+    <div id="statusBox" class="status-box"></div>
+
+    <div id="outputBox" class="output-box">
+        <div id="statsBar" class="stats-bar"></div>
+        <canvas id="previewCanvas"></canvas>
+        <div class="download-btns">
+            <button id="dlConfigBtn">1. Download CS2 Auto-Camera Config (.cfg)</button>
+            <button id="dlDemoBtn">2. Download Raw Match Replay (.dem.bz2)</button>
+            <button id="dlTitleCardBtn">3. Download Intro/Overlay Graphic (.png)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // REPLACE THIS URL with your Render / Railway backend URL once deployed!
+    const BACKEND_URL = 'http://localhost:3000/api/analyze';
+
+    const shareCodeRegex = /^CSGO-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}-[A-Za-z0-9]{5}$/;
+
+    async function runHighlightPipeline() {
+        const shareCode = document.getElementById('shareCode').value.trim();
+        const steamId = document.getElementById('steamId').value.trim();
+        const videoFormat = document.getElementById('videoFormat').value;
+        const fov = document.getElementById('fov').value;
+        const viewmodelFov = document.getElementById('viewmodelFov').value;
+        const overlayText = document.getElementById('overlayText').value.trim();
+
+        const statusBox = document.getElementById('statusBox');
+        const outputBox = document.getElementById('outputBox');
+        const btn = document.getElementById('generateBtn');
+
+        outputBox.style.display = 'none';
+        statusBox.className = 'status-box';
+
+        if (!shareCodeRegex.test(shareCode)) {
+            statusBox.style.display = 'block';
+            statusBox.classList.add('error');
+            statusBox.innerHTML = '<strong>ERROR:</strong> Invalid share code format.<br>Expected: <code>CSGO-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX</code>';
+            return;
+        }
+
+        btn.disabled = true;
+        statusBox.style.display = 'block';
+        statusBox.innerHTML = `> Connecting to Valve Game Coordinator & parsing demo ticks... (Takes ~10-20s)`;
+
+        try {
+            const response = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shareCode, steamId, fov, viewmodelFov, overlayText, videoFormat })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to extract highlight.');
+            }
+
+            // Populate real stats
+            document.getElementById('statsBar').innerHTML = `
+                <strong>BEST PERFORMANCE FOUND:</strong><br>
+                > PLAYER: ${data.highlight.player}<br>
+                > ROUND: ${data.highlight.round} (${data.highlight.killsCount} KILLS)<br>
+                > TICKS: ${data.highlight.startTick} -> ${data.highlight.endTick} | FOV: ${fov}
+            `;
+
+            // Render Graphic Preview with Text Overlay in chosen Aspect Ratio
+            renderOverlayCanvas(videoFormat, overlayText || `${data.highlight.player} - ${data.highlight.killsCount}K`, data.highlight.round);
+
+            // Wire up downloads
+            document.getElementById('dlConfigBtn').onclick = () => downloadTextFile('cs2_highlight.cfg', data.cfgContent);
+            document.getElementById('dlDemoBtn').onclick = () => window.open(data.demoUrl, '_blank');
+            document.getElementById('dlTitleCardBtn').onclick = () => downloadCanvas();
+
+            statusBox.style.display = 'none';
+            outputBox.style.display = 'block';
+
+        } catch (err) {
+            statusBox.classList.add('error');
+            statusBox.innerHTML = `<strong>ERROR:</strong> ${err.message}`;
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function renderOverlayCanvas(format, text, round) {
+        const canvas = document.getElementById('previewCanvas');
+        const ctx = canvas.getContext('2d');
+
+        if (format === '916') {
+            canvas.width = 270;
+            canvas.height = 480;
+        } else {
+            canvas.width = 480;
+            canvas.height = 270;
+        }
+
+        // Dark tactical background
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Border frame
+        ctx.strokeStyle = '#de9b35';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+        // Top tag
+        ctx.fillStyle = '#de9b35';
+        ctx.font = 'bold 14px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText(`CS2 // ROUND ${round}`, canvas.width / 2, 45);
+
+        // Main Custom Text Overlay
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px Courier New';
+        ctx.fillText(text.toUpperCase(), canvas.width / 2, canvas.height / 2);
+
+        // Bottom watermark
+        ctx.fillStyle = '#666666';
+        ctx.font = '12px Courier New';
+        ctx.fillText(format === '916' ? '9:16 SHORTS CROP' : '16:9 STANDARD', canvas.width / 2, canvas.height - 25);
+    }
+
+    function downloadTextFile(filename, text) {
+        const el = document.createElement('a');
+        el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        el.setAttribute('download', filename);
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        el.click();
+        document.body.removeChild(el);
+    }
+
+    function downloadCanvas() {
+        const canvas = document.getElementById('previewCanvas');
+        const link = document.createElement('a');
+        link.download = 'cs2-highlight-overlay.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+</script>
+
+</body>
+</html>
